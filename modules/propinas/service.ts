@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export type ResultadoTrabajador = {
   trabajador_id: string;
@@ -8,7 +8,7 @@ export type ResultadoTrabajador = {
 };
 
 export async function calcularPropinasSemana(semanaId: string): Promise<ResultadoTrabajador[]> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   const { data: turnosSemana, error: errorTurnos } = await supabase
     .from("turnos_dia")

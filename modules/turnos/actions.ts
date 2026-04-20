@@ -1,10 +1,19 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 
-export async function asignarTrabajadorATurno(formData: FormData) {
+async function requireAuth() {
   const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("No autenticado");
+  return user;
+}
+
+export async function asignarTrabajadorATurno(formData: FormData) {
+  await requireAuth();
+  const admin = createAdminClient();
 
   const turno_dia_id = String(formData.get("turno_dia_id") ?? "");
   const trabajador_id = String(formData.get("trabajador_id") ?? "");
@@ -14,7 +23,7 @@ export async function asignarTrabajadorATurno(formData: FormData) {
     throw new Error("Faltan datos");
   }
 
-  const { data: existente, error: errorBusqueda } = await supabase
+  const { data: existente, error: errorBusqueda } = await admin
     .from("asignaciones_turno")
     .select("id")
     .eq("turno_dia_id", turno_dia_id)
@@ -26,7 +35,7 @@ export async function asignarTrabajadorATurno(formData: FormData) {
   }
 
   if (!existente) {
-    const { error } = await supabase.from("asignaciones_turno").insert({
+    const { error } = await admin.from("asignaciones_turno").insert({
       turno_dia_id,
       trabajador_id,
       estado: "asistio",
@@ -41,7 +50,8 @@ export async function asignarTrabajadorATurno(formData: FormData) {
 }
 
 export async function quitarTrabajadorDeTurno(formData: FormData) {
-  const supabase = await createClient();
+  await requireAuth();
+  const admin = createAdminClient();
 
   const turno_dia_id = String(formData.get("turno_dia_id") ?? "");
   const trabajador_id = String(formData.get("trabajador_id") ?? "");
@@ -51,7 +61,7 @@ export async function quitarTrabajadorDeTurno(formData: FormData) {
     throw new Error("Faltan datos");
   }
 
-  const { error } = await supabase
+  const { error } = await admin
     .from("asignaciones_turno")
     .delete()
     .eq("turno_dia_id", turno_dia_id)
@@ -65,7 +75,8 @@ export async function quitarTrabajadorDeTurno(formData: FormData) {
 }
 
 export async function guardarPropinaDiaria(formData: FormData) {
-  const supabase = await createClient();
+  await requireAuth();
+  const admin = createAdminClient();
 
   const fecha = String(formData.get("fecha") ?? "");
   const sucursal_id = String(formData.get("sucursal_id") ?? "");
@@ -80,7 +91,7 @@ export async function guardarPropinaDiaria(formData: FormData) {
     throw new Error("Monto invalido");
   }
 
-  const { data: existente, error: errorBusqueda } = await supabase
+  const { data: existente, error: errorBusqueda } = await admin
     .from("propinas_diarias")
     .select("id")
     .eq("fecha", fecha)
@@ -92,7 +103,7 @@ export async function guardarPropinaDiaria(formData: FormData) {
   }
 
   if (existente) {
-    const { error } = await supabase
+    const { error } = await admin
       .from("propinas_diarias")
       .update({ monto_total })
       .eq("id", existente.id);
@@ -101,7 +112,7 @@ export async function guardarPropinaDiaria(formData: FormData) {
       throw new Error(`Error actualizando propina diaria: ${error.message}`);
     }
   } else {
-    const { error } = await supabase.from("propinas_diarias").insert({
+    const { error } = await admin.from("propinas_diarias").insert({
       fecha,
       sucursal_id,
       monto_total,

@@ -12,7 +12,7 @@ export async function login(formData: FormData) {
   const { error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
-    redirect("/login?error=Credenciales%20inv%C3%A1lidas");
+    redirect(`/login?error=${encodeURIComponent(error.message)}`);
   }
 
   redirect("/semana");

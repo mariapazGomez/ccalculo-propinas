@@ -101,8 +101,8 @@ export async function getSemanas() {
 
   const { data, error } = await supabase
     .from("semanas")
-    .select("id, estado, creado_en")
-    .order("creado_en", { ascending: false });
+    .select("id, estado, creado_en, fecha_inicio, fecha_fin")
+    .order("fecha_inicio", { ascending: false });
 
   if (error) {
     throw new Error(`No se pudieron obtener las semanas: ${error.message}`);
