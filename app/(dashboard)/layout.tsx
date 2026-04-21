@@ -43,11 +43,18 @@ export default async function DashboardLayout({ children }: { children: ReactNod
                   Semanas
                 </Link>
                 {isAdmin && (
-                  <Link href="/admin"
-                    className="rounded-lg px-3 py-1.5 text-sm font-medium transition-colors hover:bg-slate-100"
-                    style={{ color: "var(--text-secondary)" }}>
-                    Admin
-                  </Link>
+                  <>
+                    <Link href="/horas"
+                      className="rounded-lg px-3 py-1.5 text-sm font-medium transition-colors hover:bg-slate-100"
+                      style={{ color: "var(--text-secondary)" }}>
+                      Horas
+                    </Link>
+                    <Link href="/admin"
+                      className="rounded-lg px-3 py-1.5 text-sm font-medium transition-colors hover:bg-slate-100"
+                      style={{ color: "var(--text-secondary)" }}>
+                      Admin
+                    </Link>
+                  </>
                 )}
               </nav>
             </div>
