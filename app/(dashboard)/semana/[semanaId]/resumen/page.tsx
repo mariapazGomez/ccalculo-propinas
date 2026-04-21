@@ -24,9 +24,20 @@ export default async function ResumenPage({
     calcularPropinasSemana(semanaId),
     admin
       .from("propinas_calculadas")
-      .select("trabajador_id, monto_total, total_participaciones, trabajadores(nombre)")
+      .select("trabajador_id, monto_total, total_participaciones")
       .eq("semana_id", semanaId),
   ]);
+
+  // Mapa de nombres desde los resultados calculados (ya los tiene) o desde DB
+  const nombresMap = new Map<string, string>(resultados.map((r) => [r.trabajador_id, r.nombre]));
+  if ((guardadas?.length ?? 0) > 0 && nombresMap.size === 0) {
+    const ids = (guardadas ?? []).map((g) => g.trabajador_id);
+    const { data: trabajadores } = await admin
+      .from("trabajadores")
+      .select("id, nombre")
+      .in("id", ids);
+    for (const t of trabajadores ?? []) nombresMap.set(t.id, t.nombre);
+  }
 
   const yaGuardado = (guardadas?.length ?? 0) > 0;
   const abierta = semana.estado === "abierta";
@@ -188,12 +199,12 @@ export default async function ResumenPage({
                 <tbody>
                   {(guardadas ?? [])
                     .sort((a, b) => {
-                      const na = (a.trabajadores as { nombre: string } | null)?.nombre ?? "";
-                      const nb = (b.trabajadores as { nombre: string } | null)?.nombre ?? "";
+                      const na = nombresMap.get(a.trabajador_id) ?? "";
+                      const nb = nombresMap.get(b.trabajador_id) ?? "";
                       return na.localeCompare(nb, "es");
                     })
                     .map((r) => {
-                      const nombre = (r.trabajadores as { nombre: string } | null)?.nombre ?? r.trabajador_id;
+                      const nombre = nombresMap.get(r.trabajador_id) ?? r.trabajador_id;
                       return (
                         <tr key={r.trabajador_id} className="border-b last:border-0"
                           style={{ borderColor: "var(--border)" }}>
