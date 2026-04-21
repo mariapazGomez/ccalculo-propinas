@@ -26,7 +26,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
         <div className="mx-auto max-w-6xl px-6">
           <div className="flex h-14 items-center justify-between">
             <div className="flex items-center gap-6">
-              <Link href="/semana" className="flex items-center gap-2">
+              <Link href="/dashboard" className="flex items-center gap-2">
                 <span className="text-lg font-bold tracking-tight" style={{ color: "var(--text-primary)" }}>
                   Propinas
                 </span>
@@ -37,6 +37,11 @@ export default async function DashboardLayout({ children }: { children: ReactNod
               </Link>
 
               <nav className="flex items-center gap-1">
+                <Link href="/dashboard"
+                  className="rounded-lg px-3 py-1.5 text-sm font-medium transition-colors hover:bg-slate-100"
+                  style={{ color: "var(--text-secondary)" }}>
+                  Inicio
+                </Link>
                 <Link href="/semana"
                   className="rounded-lg px-3 py-1.5 text-sm font-medium transition-colors hover:bg-slate-100"
                   style={{ color: "var(--text-secondary)" }}>
