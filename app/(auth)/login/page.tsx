@@ -41,10 +41,8 @@ export default function LoginPage({
                   placeholder="tu@correo.cl"
                   required
                   autoComplete="email"
-                  className="w-full rounded-xl border px-3.5 py-2.5 text-sm outline-none transition-all"
+                  className="w-full rounded-xl border px-3.5 py-2.5 text-sm outline-none transition-colors focus:border-indigo-500"
                   style={{ borderColor: "var(--border)", color: "var(--text-primary)" }}
-                  onFocus={(e) => (e.currentTarget.style.borderColor = "#6366f1")}
-                  onBlur={(e) => (e.currentTarget.style.borderColor = "var(--border)")}
                 />
               </div>
               <div className="space-y-1.5">
@@ -57,7 +55,7 @@ export default function LoginPage({
                   placeholder="••••••••"
                   required
                   autoComplete="current-password"
-                  className="w-full rounded-xl border px-3.5 py-2.5 text-sm outline-none transition-all"
+                  className="w-full rounded-xl border px-3.5 py-2.5 text-sm outline-none transition-colors focus:border-indigo-500"
                   style={{ borderColor: "var(--border)", color: "var(--text-primary)" }}
                 />
               </div>
