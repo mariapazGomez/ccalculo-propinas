@@ -1,9 +1,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
-
-const ADMIN_EMAIL = "gomezgomariapaz@gmail.com";
+import { getAdminContext } from "@/modules/admin/queries";
 
 const navLinks = [
   { href: "/admin", label: "Resumen" },
@@ -13,10 +11,8 @@ const navLinks = [
 ];
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
-  if (!user || user.email !== ADMIN_EMAIL) redirect("/semana");
+  const { isAdmin } = await getAdminContext();
+  if (!isAdmin) redirect("/semana");
 
   return (
     <div className="space-y-6">

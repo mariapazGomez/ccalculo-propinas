@@ -9,11 +9,16 @@ export async function getAdminContext() {
   const admin = createAdminClient();
   const { data: membresia } = await admin
     .from("miembros_organizacion")
-    .select("organizacion_id")
+    .select("organizacion_id, rol")
     .eq("usuario_id", user.id)
     .maybeSingle();
 
-  return { user, organizacion_id: membresia?.organizacion_id ?? null };
+  return {
+    user,
+    organizacion_id: membresia?.organizacion_id ?? null,
+    rol: membresia?.rol ?? null,
+    isAdmin: membresia?.rol === "admin",
+  };
 }
 
 export async function getSucursalesAdmin(organizacion_id: string) {

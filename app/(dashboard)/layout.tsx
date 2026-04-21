@@ -2,9 +2,8 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { logout } from "@/modules/auth/actions";
-
-const ADMIN_EMAIL = "gomezgomariapaz@gmail.com";
 
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
   const supabase = await createClient();
@@ -12,7 +11,14 @@ export default async function DashboardLayout({ children }: { children: ReactNod
 
   if (!user) redirect("/login");
 
-  const isAdmin = user.email === ADMIN_EMAIL;
+  const admin = createAdminClient();
+  const { data: membresia } = await admin
+    .from("miembros_organizacion")
+    .select("rol")
+    .eq("usuario_id", user.id)
+    .maybeSingle();
+
+  const isAdmin = membresia?.rol === "admin";
 
   return (
     <div className="min-h-screen" style={{ background: "var(--background)" }}>
@@ -31,19 +37,15 @@ export default async function DashboardLayout({ children }: { children: ReactNod
               </Link>
 
               <nav className="flex items-center gap-1">
-                <Link
-                  href="/semana"
+                <Link href="/semana"
                   className="rounded-lg px-3 py-1.5 text-sm font-medium transition-colors hover:bg-slate-100"
-                  style={{ color: "var(--text-secondary)" }}
-                >
+                  style={{ color: "var(--text-secondary)" }}>
                   Semanas
                 </Link>
                 {isAdmin && (
-                  <Link
-                    href="/admin"
+                  <Link href="/admin"
                     className="rounded-lg px-3 py-1.5 text-sm font-medium transition-colors hover:bg-slate-100"
-                    style={{ color: "var(--text-secondary)" }}
-                  >
+                    style={{ color: "var(--text-secondary)" }}>
                     Admin
                   </Link>
                 )}
@@ -55,11 +57,9 @@ export default async function DashboardLayout({ children }: { children: ReactNod
                 {user.email}
               </span>
               <form action={logout}>
-                <button
-                  type="submit"
+                <button type="submit"
                   className="rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors hover:bg-slate-50"
-                  style={{ borderColor: "var(--border)", color: "var(--text-secondary)" }}
-                >
+                  style={{ borderColor: "var(--border)", color: "var(--text-secondary)" }}>
                   Salir
                 </button>
               </form>

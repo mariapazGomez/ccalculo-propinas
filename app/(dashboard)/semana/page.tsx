@@ -1,9 +1,7 @@
 import Link from "next/link";
 import { getSemanas } from "@/modules/turnos/queries";
-import { createClient } from "@/lib/supabase/server";
+import { getAdminContext } from "@/modules/admin/queries";
 import { crearSemana, eliminarSemana } from "@/modules/semanas/actions";
-
-const ADMIN_EMAIL = "gomezgomariapaz@gmail.com";
 
 function proximoLunes(): string {
   const hoy = new Date();
@@ -24,10 +22,7 @@ function domingo(lunes: string): string {
 }
 
 export default async function SemanasPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  const isAdmin = user?.email === ADMIN_EMAIL;
-
+  const { isAdmin } = await getAdminContext();
   const semanas = await getSemanas();
   const defaultInicio = proximoLunes();
   const defaultFin = domingo(defaultInicio);
