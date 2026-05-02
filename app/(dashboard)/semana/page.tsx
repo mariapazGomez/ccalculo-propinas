@@ -22,8 +22,10 @@ function domingo(lunes: string): string {
 }
 
 export default async function SemanasPage() {
-  const { isAdmin } = await getAdminContext();
-  const semanas = await getSemanas();
+  const { user, rol, isAdmin } = await getAdminContext();
+  const isCalendario = rol === "calendario";
+  const puedeCrear = isAdmin || isCalendario;
+  const semanas = await getSemanas({ userId: user.id, rol: rol ?? "" });
   const defaultInicio = proximoLunes();
   const defaultFin = domingo(defaultInicio);
 
@@ -41,8 +43,8 @@ export default async function SemanasPage() {
         </div>
       </div>
 
-      {/* Formulario nueva semana (solo admin) */}
-      {isAdmin && (
+      {/* Formulario nueva semana (admin y calendario) */}
+      {puedeCrear && (
         <div className="rounded-2xl border p-6" style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
           <div className="mb-5 flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg"
@@ -109,6 +111,7 @@ export default async function SemanasPage() {
             const fechaInicio = new Date(semana.fecha_inicio + "T12:00:00").toLocaleDateString("es-CL", { day: "numeric", month: "long" });
             const fechaFin = new Date(semana.fecha_fin + "T12:00:00").toLocaleDateString("es-CL", { day: "numeric", month: "long", year: "numeric" });
             const abierta = semana.estado === "abierta";
+            const programada = semana.estado === "programada";
 
             return (
               <li key={semana.id} className="flex items-center gap-3">
@@ -119,9 +122,9 @@ export default async function SemanasPage() {
                 >
                   <div className="flex items-center gap-4">
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
-                      style={{ background: abierta ? "#ecfdf5" : "#f8fafc" }}>
+                      style={{ background: abierta ? "#ecfdf5" : programada ? "#eef2ff" : "#f8fafc" }}>
                       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                        stroke={abierta ? "#10b981" : "#94a3b8"}>
+                        stroke={abierta ? "#10b981" : programada ? "#6366f1" : "#94a3b8"}>
                         <rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
                       </svg>
                     </div>
@@ -139,11 +142,11 @@ export default async function SemanasPage() {
 
                   <div className="flex items-center gap-3">
                     <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${
-                      abierta
-                        ? "bg-emerald-50 text-emerald-700"
-                        : "bg-slate-100 text-slate-500"
+                      abierta ? "bg-emerald-50 text-emerald-700" :
+                      programada ? "bg-indigo-50 text-indigo-700" :
+                      "bg-slate-100 text-slate-500"
                     }`}>
-                      {abierta ? "Abierta" : "Cerrada"}
+                      {abierta ? "Abierta" : programada ? "Programada" : "Cerrada"}
                     </span>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
                       className="transition-colors group-hover:stroke-slate-400">

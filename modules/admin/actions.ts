@@ -130,6 +130,25 @@ export async function crearSucursal(formData: FormData) {
   revalidatePath("/admin/sucursales");
 }
 
+export async function actualizarLimiteHoras(formData: FormData) {
+  const { organizacion_id } = await getAdminContext();
+  if (!organizacion_id) throw new Error("Sin organización");
+
+  const limite = Number(formData.get("limite_horas_semana"));
+  if (!Number.isInteger(limite) || limite < 8 || limite > 168) {
+    throw new Error("El límite debe ser un número entero entre 8 y 168");
+  }
+
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("organizaciones")
+    .update({ limite_horas_semana: limite })
+    .eq("id", organizacion_id);
+
+  if (error) throw new Error(`Error actualizando límite: ${error.message}`);
+  revalidatePath("/admin/configuracion");
+}
+
 export async function eliminarSucursal(formData: FormData) {
   const admin = createAdminClient();
   const id = String(formData.get("id") ?? "");

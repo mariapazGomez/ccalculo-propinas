@@ -71,6 +71,16 @@ export async function getUsuariosAdmin(organizacion_id: string) {
   }));
 }
 
+export async function getOrganizacion(organizacion_id: string) {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("organizaciones")
+    .select("id, nombre, limite_horas_semana")
+    .eq("id", organizacion_id)
+    .single();
+  return data;
+}
+
 export async function getTrabajadoresAdmin(organizacion_id: string) {
   const admin = createAdminClient();
   const { data } = await admin

@@ -31,9 +31,10 @@ type Props = {
   semanaId: string;
   filas: FilaSemana[];
   trabajadores: Trabajador[];
+  mostrarPropinas?: boolean;
 };
 
-export default function TurnosSemanaBoard({ semanaId, filas, trabajadores }: Props) {
+export default function TurnosSemanaBoard({ semanaId, filas, trabajadores, mostrarPropinas = true }: Props) {
   const router = useRouter();
   const [draggedWorker, setDraggedWorker] = useState<Trabajador | null>(null);
   const [selectedWorker, setSelectedWorker] = useState<Trabajador | null>(null);
@@ -344,27 +345,29 @@ export default function TurnosSemanaBoard({ semanaId, filas, trabajadores }: Pro
                   </div>
 
                   {/* Propina del día */}
-                  <form action={guardarPropinaDiaria} className="flex items-center gap-2">
-                    <input type="hidden" name="fecha" value={fila.fecha} />
-                    <input type="hidden" name="sucursal_id" value={fila.am?.sucursal_id ?? fila.pm?.sucursal_id ?? ""} />
-                    <input type="hidden" name="semana_id" value={semanaId} />
-                    <div className="relative flex-1">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-medium" style={{ color: "var(--text-muted)" }}>$</span>
-                      <input
-                        type="number" name="monto_total" min="0" step="1"
-                        defaultValue={fila.propina ?? ""}
-                        placeholder="Propina del día"
-                        required
-                        className="w-full rounded-xl border py-2.5 pl-6 pr-3 text-sm outline-none focus:border-indigo-400"
-                        style={{ borderColor: "var(--border)", color: "var(--text-primary)" }}
-                      />
-                    </div>
-                    <button type="submit"
-                      className="shrink-0 rounded-xl px-4 py-2.5 text-xs font-semibold text-white transition-opacity hover:opacity-90"
-                      style={{ background: "linear-gradient(135deg, #6366f1, #8b5cf6)" }}>
-                      Guardar
-                    </button>
-                  </form>
+                  {mostrarPropinas && (
+                    <form action={guardarPropinaDiaria} className="flex items-center gap-2">
+                      <input type="hidden" name="fecha" value={fila.fecha} />
+                      <input type="hidden" name="sucursal_id" value={fila.am?.sucursal_id ?? fila.pm?.sucursal_id ?? ""} />
+                      <input type="hidden" name="semana_id" value={semanaId} />
+                      <div className="relative flex-1">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-medium" style={{ color: "var(--text-muted)" }}>$</span>
+                        <input
+                          type="number" name="monto_total" min="0" step="1"
+                          defaultValue={fila.propina ?? ""}
+                          placeholder="Propina del día"
+                          required
+                          className="w-full rounded-xl border py-2.5 pl-6 pr-3 text-sm outline-none focus:border-indigo-400"
+                          style={{ borderColor: "var(--border)", color: "var(--text-primary)" }}
+                        />
+                      </div>
+                      <button type="submit"
+                        className="shrink-0 rounded-xl px-4 py-2.5 text-xs font-semibold text-white transition-opacity hover:opacity-90"
+                        style={{ background: "linear-gradient(135deg, #6366f1, #8b5cf6)" }}>
+                        Guardar
+                      </button>
+                    </form>
+                  )}
                 </div>
               </div>
             ))}
@@ -397,7 +400,9 @@ export default function TurnosSemanaBoard({ semanaId, filas, trabajadores }: Pro
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>
                     <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-purple-400" />PM</span>
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>Propina</th>
+                  {mostrarPropinas && (
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>Propina</th>
+                  )}
                 </tr>
               </thead>
               <tbody>
@@ -414,25 +419,27 @@ export default function TurnosSemanaBoard({ semanaId, filas, trabajadores }: Pro
                     </td>
                     <td className="px-4 py-4">{renderTurnoCellDesktop(fila.am, "AM")}</td>
                     <td className="px-4 py-4">{renderTurnoCellDesktop(fila.pm, "PM")}</td>
-                    <td className="px-4 py-4 align-middle">
-                      <form action={guardarPropinaDiaria} className="flex items-center gap-2">
-                        <input type="hidden" name="fecha" value={fila.fecha} />
-                        <input type="hidden" name="sucursal_id" value={fila.am?.sucursal_id ?? fila.pm?.sucursal_id ?? ""} />
-                        <input type="hidden" name="semana_id" value={semanaId} />
-                        <div className="relative">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-medium" style={{ color: "var(--text-muted)" }}>$</span>
-                          <input type="number" name="monto_total" min="0" step="1"
-                            defaultValue={fila.propina ?? ""} placeholder="0" required
-                            className="w-28 rounded-xl border py-2 pl-6 pr-3 text-sm outline-none focus:border-indigo-400"
-                            style={{ borderColor: "var(--border)", color: "var(--text-primary)" }} />
-                        </div>
-                        <button type="submit"
-                          className="rounded-xl px-3 py-2 text-xs font-semibold text-white transition-opacity hover:opacity-90"
-                          style={{ background: "linear-gradient(135deg, #6366f1, #8b5cf6)" }}>
-                          Guardar
-                        </button>
-                      </form>
-                    </td>
+                    {mostrarPropinas && (
+                      <td className="px-4 py-4 align-middle">
+                        <form action={guardarPropinaDiaria} className="flex items-center gap-2">
+                          <input type="hidden" name="fecha" value={fila.fecha} />
+                          <input type="hidden" name="sucursal_id" value={fila.am?.sucursal_id ?? fila.pm?.sucursal_id ?? ""} />
+                          <input type="hidden" name="semana_id" value={semanaId} />
+                          <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-medium" style={{ color: "var(--text-muted)" }}>$</span>
+                            <input type="number" name="monto_total" min="0" step="1"
+                              defaultValue={fila.propina ?? ""} placeholder="0" required
+                              className="w-28 rounded-xl border py-2 pl-6 pr-3 text-sm outline-none focus:border-indigo-400"
+                              style={{ borderColor: "var(--border)", color: "var(--text-primary)" }} />
+                          </div>
+                          <button type="submit"
+                            className="rounded-xl px-3 py-2 text-xs font-semibold text-white transition-opacity hover:opacity-90"
+                            style={{ background: "linear-gradient(135deg, #6366f1, #8b5cf6)" }}>
+                            Guardar
+                          </button>
+                        </form>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

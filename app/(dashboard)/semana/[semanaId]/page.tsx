@@ -2,7 +2,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getGrillaSemana } from "@/modules/turnos/queries";
+import { getAdminContext } from "@/modules/admin/queries";
 import TurnosSemanaBoard from "@/components/turnos/turnos-semana-board";
+import GuardarHorarioButton from "@/components/semana/guardar-horario-button";
 
 function getNombreDia(fecha: string): string {
   const date = new Date(`${fecha}T12:00:00`);
@@ -16,6 +18,8 @@ export default async function SemanaPage({
 }) {
   const { semanaId } = await params;
   const supabase = await createClient();
+  const { rol } = await getAdminContext();
+  const mostrarPropinas = rol !== "calendario";
 
   const { data: semana } = await supabase
     .from("semanas")
@@ -53,6 +57,7 @@ export default async function SemanaPage({
     : "";
 
   const abierta = semana.estado === "abierta";
+  const programada = semana.estado === "programada";
 
   return (
     <div className="space-y-6">
@@ -74,9 +79,11 @@ export default async function SemanaPage({
                 Grilla semanal
               </h1>
               <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                abierta ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500"
+                abierta ? "bg-emerald-50 text-emerald-700" :
+                programada ? "bg-indigo-50 text-indigo-700" :
+                "bg-slate-100 text-slate-500"
               }`}>
-                {abierta ? "Abierta" : "Cerrada"}
+                {abierta ? "Abierta" : programada ? "Programada" : "Cerrada"}
               </span>
             </div>
             {periodoLabel && (
@@ -85,22 +92,48 @@ export default async function SemanaPage({
           </div>
         </div>
 
-        <Link
-          href={`/semana/${semanaId}/resumen`}
-          className="flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
-          style={{ background: "linear-gradient(135deg, #6366f1, #8b5cf6)" }}
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-          </svg>
-          Ver resumen
-        </Link>
+        {mostrarPropinas ? (
+          <Link
+            href={`/semana/${semanaId}/resumen`}
+            className="flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+            style={{ background: "linear-gradient(135deg, #6366f1, #8b5cf6)" }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+            </svg>
+            Ver resumen
+          </Link>
+        ) : abierta ? (
+          <GuardarHorarioButton semanaId={semanaId} />
+        ) : programada ? (
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium"
+              style={{ borderColor: "#c7d2fe", color: "#6366f1", background: "#eef2ff" }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+              Guardado
+            </div>
+            <a
+              href={`/api/semana/${semanaId}/pdf`}
+              target="_blank"
+              className="flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+              style={{ background: "linear-gradient(135deg, #6366f1, #8b5cf6)" }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+              Descargar PDF
+            </a>
+          </div>
+        ) : null}
       </div>
 
       <TurnosSemanaBoard
         semanaId={semanaId}
         filas={filas}
         trabajadores={trabajadores ?? []}
+        mostrarPropinas={mostrarPropinas}
       />
     </div>
   );

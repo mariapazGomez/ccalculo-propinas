@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAdminContext } from "@/modules/admin/queries";
+import { getCalendarioContext } from "@/modules/calendario/context";
 
 export async function eliminarSemana(formData: FormData) {
   await getAdminContext(); // verifica que sea admin con organización
@@ -32,9 +33,26 @@ export async function eliminarSemana(formData: FormData) {
   revalidatePath("/semana");
 }
 
+export async function confirmarHorario(formData: FormData) {
+  await getCalendarioContext();
+  const semana_id = String(formData.get("semana_id") ?? "");
+  if (!semana_id) throw new Error("ID requerido");
+
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("semanas")
+    .update({ estado: "programada" })
+    .eq("id", semana_id)
+    .eq("estado", "abierta");
+
+  if (error) throw new Error(`Error confirmando horario: ${error.message}`);
+
+  revalidatePath(`/semana/${semana_id}`);
+  revalidatePath("/semana");
+}
+
 export async function crearSemana(formData: FormData) {
-  const { organizacion_id } = await getAdminContext();
-  if (!organizacion_id) throw new Error("Sin organización");
+  const { organizacion_id, user } = await getCalendarioContext();
 
   const fecha_inicio = String(formData.get("fecha_inicio") ?? "").trim();
   const fecha_fin = String(formData.get("fecha_fin") ?? "").trim();
@@ -46,7 +64,7 @@ export async function crearSemana(formData: FormData) {
 
   const { data: semana, error } = await admin
     .from("semanas")
-    .insert({ organizacion_id, fecha_inicio, fecha_fin, estado: "abierta" })
+    .insert({ organizacion_id, fecha_inicio, fecha_fin, estado: "abierta", creado_por: user.id })
     .select("id")
     .single();
 

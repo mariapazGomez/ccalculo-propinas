@@ -25,8 +25,8 @@ function BarraProgreso({ valor, maximo, color = "#6366f1" }: { valor: number; ma
 }
 
 export default async function DashboardPage() {
-  const { organizacion_id, isAdmin } = await getAdminContext();
-  if (!organizacion_id) redirect("/semana");
+  const { organizacion_id, rol, isAdmin } = await getAdminContext();
+  if (!organizacion_id || rol === "calendario") redirect("/semana");
 
   const data = await getDashboardData(organizacion_id);
   const {

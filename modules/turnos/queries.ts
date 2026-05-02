@@ -96,13 +96,19 @@ export async function getGrillaSemana(semanaId: string): Promise<AsignacionGrill
   });
 }
 
-export async function getSemanas() {
+export async function getSemanas(context?: { userId: string; rol: string }) {
   const supabase = await createClient();
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("semanas")
-    .select("id, estado, creado_en, fecha_inicio, fecha_fin")
+    .select("id, estado, creado_en, fecha_inicio, fecha_fin, creado_por")
     .order("fecha_inicio", { ascending: false });
+
+  if (context?.rol === "calendario") {
+    query = query.eq("creado_por", context.userId);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     throw new Error(`No se pudieron obtener las semanas: ${error.message}`);

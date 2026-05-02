@@ -234,16 +234,19 @@ export type Database = {
         Row: {
           creado_en: string
           id: string
+          limite_horas_semana: number
           nombre: string
         }
         Insert: {
           creado_en?: string
           id?: string
+          limite_horas_semana?: number
           nombre: string
         }
         Update: {
           creado_en?: string
           id?: string
+          limite_horas_semana?: number
           nombre?: string
         }
         Relationships: []
@@ -421,6 +424,7 @@ export type Database = {
       semanas: {
         Row: {
           creado_en: string | null
+          creado_por: string | null
           estado: string | null
           fecha_fin: string
           fecha_inicio: string
@@ -429,6 +433,7 @@ export type Database = {
         }
         Insert: {
           creado_en?: string | null
+          creado_por?: string | null
           estado?: string | null
           fecha_fin: string
           fecha_inicio: string
@@ -437,6 +442,7 @@ export type Database = {
         }
         Update: {
           creado_en?: string | null
+          creado_por?: string | null
           estado?: string | null
           fecha_fin?: string
           fecha_inicio?: string
