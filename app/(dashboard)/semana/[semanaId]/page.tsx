@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getGrillaSemana } from "@/modules/turnos/queries";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { getGrillaSemana, getTrabajadoresConDomingoRestringido } from "@/modules/turnos/queries";
 import { getAdminContext } from "@/modules/admin/queries";
 import TurnosSemanaBoard from "@/components/turnos/turnos-semana-board";
 import GuardarHorarioButton from "@/components/semana/guardar-horario-button";
@@ -23,20 +24,32 @@ export default async function SemanaPage({
 
   const { data: semana } = await supabase
     .from("semanas")
-    .select("id, estado, fecha_inicio, fecha_fin")
+    .select("id, estado, fecha_inicio, fecha_fin, organizacion_id")
     .eq("id", semanaId)
     .maybeSingle();
 
   if (!semana) notFound();
 
-  const [grilla, { data: trabajadores }] = await Promise.all([
+  const admin = createAdminClient();
+  const [grilla, { data: trabajadores }, domingoRestringidoIds, orgData] = await Promise.all([
     getGrillaSemana(semanaId),
     supabase
       .from("trabajadores")
       .select("id, nombre")
       .eq("activo", true)
       .order("nombre", { ascending: true }),
+    getTrabajadoresConDomingoRestringido(semana.fecha_inicio),
+    admin.from("organizaciones").select("limite_horas_semana").eq("id", semana.organizacion_id).single(),
   ]);
+
+  const limiteHoras = orgData.data?.limite_horas_semana ?? 40;
+
+  const horasPorTrabajador: Record<string, number> = {};
+  for (const item of grilla) {
+    for (const t of item.trabajadores) {
+      horasPorTrabajador[t.id] = (horasPorTrabajador[t.id] ?? 0) + 8;
+    }
+  }
 
   const fechas = [...new Set(grilla.map((item) => item.fecha))];
 
@@ -134,6 +147,9 @@ export default async function SemanaPage({
         filas={filas}
         trabajadores={trabajadores ?? []}
         mostrarPropinas={mostrarPropinas}
+        horasPorTrabajador={horasPorTrabajador}
+        limiteHoras={limiteHoras}
+        domingoRestringidoIds={domingoRestringidoIds}
       />
     </div>
   );
