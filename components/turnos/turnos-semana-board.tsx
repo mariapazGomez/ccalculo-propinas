@@ -32,15 +32,33 @@ type Props = {
   filas: FilaSemana[];
   trabajadores: Trabajador[];
   mostrarPropinas?: boolean;
+  horasPorTrabajador?: Record<string, number>;
+  limiteHoras?: number;
+  domingoRestringidoIds?: string[];
 };
 
-export default function TurnosSemanaBoard({ semanaId, filas, trabajadores, mostrarPropinas = true }: Props) {
+export default function TurnosSemanaBoard({
+  semanaId,
+  filas,
+  trabajadores,
+  mostrarPropinas = true,
+  horasPorTrabajador = {},
+  limiteHoras = 40,
+  domingoRestringidoIds = [],
+}: Props) {
   const router = useRouter();
   const [draggedWorker, setDraggedWorker] = useState<Trabajador | null>(null);
   const [selectedWorker, setSelectedWorker] = useState<Trabajador | null>(null);
   const [hoveredTurnoId, setHoveredTurnoId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+
+  const domingoRestringidoSet = useMemo(() => new Set(domingoRestringidoIds), [domingoRestringidoIds]);
+  const fechasDomingo = useMemo(
+    () => new Set(filas.filter((f) => new Date(f.fecha + "T12:00:00").getDay() === 0).map((f) => f.fecha)),
+    [filas]
+  );
+  const selectedEsRestringidoDomingo = selectedWorker ? domingoRestringidoSet.has(selectedWorker.id) : false;
 
   const trabajadoresAsignadosIds = useMemo(() => {
     const ids = new Set<string>();
@@ -97,11 +115,12 @@ export default function TurnosSemanaBoard({ semanaId, filas, trabajadores, mostr
   }
 
   // ── Celda de turno (desktop, dentro de la tabla) ─────────────────────────
-  function renderTurnoCellDesktop(turno?: TurnoCelda, label?: string) {
+  function renderTurnoCellDesktop(turno?: TurnoCelda, label?: string, esDomingo?: boolean) {
+    const domingoBlockedBySelection = esDomingo && selectedEsRestringidoDomingo;
     if (!turno) {
       return (
         <div className="flex min-h-[72px] items-center justify-center rounded-xl border-2 border-dashed"
-          style={{ borderColor: "var(--border)" }}>
+          style={{ borderColor: domingoBlockedBySelection ? "#fde68a" : "var(--border)", background: domingoBlockedBySelection ? "#fffbeb" : "transparent" }}>
           <span className="text-xs" style={{ color: "var(--text-muted)" }}>Sin turno</span>
         </div>
       );
@@ -112,8 +131,8 @@ export default function TurnosSemanaBoard({ semanaId, filas, trabajadores, mostr
       <div
         className="min-h-[72px] rounded-xl border-2 border-dashed p-2.5 transition-all"
         style={{
-          borderColor: isHovered ? "#6366f1" : "var(--border)",
-          background: isHovered ? "#eef2ff" : "transparent",
+          borderColor: domingoBlockedBySelection ? "#fde68a" : isHovered ? "#6366f1" : "var(--border)",
+          background: domingoBlockedBySelection ? "#fffbeb" : isHovered ? "#eef2ff" : "transparent",
           cursor: selectedWorker ? "pointer" : "default",
         }}
         onDragOver={(e) => { e.preventDefault(); setHoveredTurnoId(turno.id); }}
@@ -250,6 +269,10 @@ export default function TurnosSemanaBoard({ semanaId, filas, trabajadores, mostr
         {trabajadores.map((t) => {
           const yaAsignado = trabajadoresAsignadosIds.has(t.id);
           const isSelected = selectedWorker?.id === t.id;
+          const horas = horasPorTrabajador[t.id] ?? 0;
+          const pct = Math.min(horas / limiteHoras, 1);
+          const horasColor = pct >= 1 ? "#f43f5e" : pct >= 0.75 ? "#f59e0b" : "#10b981";
+          const esDomingoRestringido = domingoRestringidoSet.has(t.id);
           return (
             <button
               key={t.id}
@@ -258,7 +281,7 @@ export default function TurnosSemanaBoard({ semanaId, filas, trabajadores, mostr
               draggable
               onDragStart={() => { setDraggedWorker(t); setSelectedWorker(t); }}
               onDragEnd={() => { setDraggedWorker(null); setHoveredTurnoId(null); }}
-              className="flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium select-none transition-all active:scale-95"
+              className="flex flex-col items-start gap-0.5 rounded-xl border px-3 py-1.5 text-xs font-medium select-none transition-all active:scale-95"
               style={{
                 borderColor: isSelected ? "#6366f1" : yaAsignado ? "var(--border)" : "#c7d2fe",
                 background: isSelected ? "#6366f1" : yaAsignado ? "#f8fafc" : "#eef2ff",
@@ -266,16 +289,36 @@ export default function TurnosSemanaBoard({ semanaId, filas, trabajadores, mostr
                 boxShadow: isSelected ? "0 0 0 3px #c7d2fe" : "none",
               }}
             >
-              <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[9px] font-bold"
-                style={{ background: isSelected ? "rgba(255,255,255,0.3)" : yaAsignado ? "#cbd5e1" : "#a5b4fc", color: isSelected ? "white" : "white" }}>
-                {t.nombre.charAt(0)}
-              </span>
-              {t.nombre.split(" ")[0]}
-              {yaAsignado && !isSelected && (
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="20 6 9 17 4 12" />
-                </svg>
-              )}
+              <div className="flex items-center gap-1.5">
+                <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[9px] font-bold"
+                  style={{ background: isSelected ? "rgba(255,255,255,0.3)" : yaAsignado ? "#cbd5e1" : "#a5b4fc", color: "white" }}>
+                  {t.nombre.charAt(0)}
+                </span>
+                {t.nombre.split(" ")[0]}
+                {esDomingoRestringido && (
+                  <span title="No puede trabajar el domingo (trabajó el domingo pasado)"
+                    className="flex h-3.5 w-3.5 items-center justify-center rounded-full"
+                    style={{ background: isSelected ? "rgba(255,255,255,0.25)" : "#fef3c7" }}>
+                    <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke={isSelected ? "white" : "#d97706"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
+                    </svg>
+                  </span>
+                )}
+                {yaAsignado && !isSelected && (
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                )}
+              </div>
+              {/* Barra de horas */}
+              <div className="flex items-center gap-1.5 w-full">
+                <div className="h-1 flex-1 rounded-full overflow-hidden" style={{ background: isSelected ? "rgba(255,255,255,0.25)" : "#e2e8f0" }}>
+                  <div className="h-full rounded-full transition-all" style={{ width: `${pct * 100}%`, background: isSelected ? "white" : horasColor }} />
+                </div>
+                <span className="text-[9px] font-medium tabular-nums" style={{ color: isSelected ? "rgba(255,255,255,0.8)" : horasColor }}>
+                  {horas}h/{limiteHoras}h
+                </span>
+              </div>
             </button>
           );
         })}
@@ -284,6 +327,15 @@ export default function TurnosSemanaBoard({ semanaId, filas, trabajadores, mostr
         <p className="text-xs" style={{ color: "#6366f1" }}>
           Seleccionado: <strong>{selectedWorker.nombre}</strong> — toca un turno AM o PM para asignar
         </p>
+      )}
+      {selectedEsRestringidoDomingo && fechasDomingo.size > 0 && (
+        <div className="flex items-start gap-1.5 rounded-lg px-2.5 py-2 text-[11px]"
+          style={{ background: "#fffbeb", border: "1px solid #fde68a", color: "#92400e" }}>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mt-px shrink-0">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
+          </svg>
+          <span><strong>{selectedWorker?.nombre.split(" ")[0]}</strong> trabajó el domingo pasado — no puede ser asignado al domingo de esta semana.</span>
+        </div>
       )}
     </div>
   );
@@ -317,17 +369,30 @@ export default function TurnosSemanaBoard({ semanaId, filas, trabajadores, mostr
           <div className="space-y-3">
             {filas.map((fila, i) => (
               <div key={fila.fecha} className="rounded-2xl border overflow-hidden"
-                style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
+                style={{
+                  background: "var(--surface)",
+                  borderColor: fechasDomingo.has(fila.fecha) && selectedEsRestringidoDomingo ? "#fde68a" : "var(--border)",
+                }}>
                 {/* Cabecera del día */}
                 <div className="flex items-center justify-between border-b px-4 py-3"
-                  style={{ borderColor: "var(--border)", background: i % 2 === 0 ? "#fafbff" : "var(--surface)" }}>
-                  <div>
+                  style={{
+                    borderColor: "var(--border)",
+                    background: fechasDomingo.has(fila.fecha) && selectedEsRestringidoDomingo ? "#fffbeb" : i % 2 === 0 ? "#fafbff" : "var(--surface)",
+                  }}>
+                  <div className="flex items-center gap-1.5">
                     <span className="text-sm font-bold capitalize" style={{ color: "var(--text-primary)" }}>
                       {fila.nombreDia.split(" ")[0]}
                     </span>
-                    <span className="ml-1.5 text-xs" style={{ color: "var(--text-muted)" }}>
+                    <span className="ml-1 text-xs" style={{ color: "var(--text-muted)" }}>
                       {fila.nombreDia.split(" ").slice(1).join(" ")}
                     </span>
+                    {fechasDomingo.has(fila.fecha) && selectedEsRestringidoDomingo && (
+                      <span className="inline-flex items-center justify-center h-4 w-4 rounded-full" style={{ background: "#fef3c7" }}>
+                        <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
+                        </svg>
+                      </span>
+                    )}
                   </div>
                   {fila.propina != null && (
                     <span className="rounded-full px-2 py-0.5 text-xs font-semibold"
@@ -410,15 +475,24 @@ export default function TurnosSemanaBoard({ semanaId, filas, trabajadores, mostr
                   <tr key={fila.fecha} className="border-b last:border-0 align-top"
                     style={{ borderColor: "var(--border)", background: i % 2 === 0 ? "var(--surface)" : "#fafbff" }}>
                     <td className="px-4 py-4 align-middle">
-                      <p className="text-sm font-semibold capitalize" style={{ color: "var(--text-primary)" }}>
-                        {fila.nombreDia.split(" ")[0]}
-                      </p>
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-sm font-semibold capitalize" style={{ color: "var(--text-primary)" }}>
+                          {fila.nombreDia.split(" ")[0]}
+                        </p>
+                        {fechasDomingo.has(fila.fecha) && selectedEsRestringidoDomingo && (
+                          <span title="Trabajador con restricción de domingo" className="inline-flex items-center justify-center h-4 w-4 rounded-full" style={{ background: "#fef3c7" }}>
+                            <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
+                            </svg>
+                          </span>
+                        )}
+                      </div>
                       <p className="text-xs" style={{ color: "var(--text-muted)" }}>
                         {fila.nombreDia.split(" ").slice(1).join(" ")}
                       </p>
                     </td>
-                    <td className="px-4 py-4">{renderTurnoCellDesktop(fila.am, "AM")}</td>
-                    <td className="px-4 py-4">{renderTurnoCellDesktop(fila.pm, "PM")}</td>
+                    <td className="px-4 py-4">{renderTurnoCellDesktop(fila.am, "AM", fechasDomingo.has(fila.fecha))}</td>
+                    <td className="px-4 py-4">{renderTurnoCellDesktop(fila.pm, "PM", fechasDomingo.has(fila.fecha))}</td>
                     {mostrarPropinas && (
                       <td className="px-4 py-4 align-middle">
                         <form action={guardarPropinaDiaria} className="flex items-center gap-2">

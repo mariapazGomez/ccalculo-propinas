@@ -72,6 +72,32 @@ export async function asignarTrabajadorATurno(formData: FormData) {
     }
   }
 
+  // Validación 3: restricción de domingo (no puede trabajar domingo si trabajó el domingo pasado)
+  const esDomingo = new Date(turnoDia.fecha + "T12:00:00").getDay() === 0;
+  if (esDomingo) {
+    const dPrevio = new Date(turnoDia.fecha + "T12:00:00");
+    dPrevio.setDate(dPrevio.getDate() - 7);
+    const domingoAnterior = dPrevio.toISOString().split("T")[0];
+
+    const { data: turnosDomingoAnt } = await admin
+      .from("turnos_dia")
+      .select("id")
+      .eq("fecha", domingoAnterior);
+
+    if (turnosDomingoAnt?.length) {
+      const idsDomingoAnt = turnosDomingoAnt.map((t) => t.id);
+      const { count: trabajoElDomingoAnt } = await admin
+        .from("asignaciones_turno")
+        .select("id", { count: "exact", head: true })
+        .eq("trabajador_id", trabajador_id)
+        .in("turno_dia_id", idsDomingoAnt);
+
+      if ((trabajoElDomingoAnt ?? 0) > 0) {
+        throw new Error("Este trabajador no puede trabajar el domingo porque trabajó el domingo pasado.");
+      }
+    }
+  }
+
   // Validación 2: límite de horas semanales
   if (idsSemana.length > 0) {
     const { count: turnosActuales } = await admin
