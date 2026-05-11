@@ -32,34 +32,17 @@ export async function asignarTrabajadorATurno(formData: FormData) {
 
   if (errorTurnoDia || !turnoDia) throw new Error("Turno no encontrado");
 
-  // Obtener todos los turnos_dia de la semana para ambas validaciones
+  // Obtener todos los turnos_dia de la semana para validar turno doble en el mismo día
   const { data: turnosSemana } = await admin
     .from("turnos_dia")
     .select("id, fecha")
     .eq("semana_id", turnoDia.semana_id);
 
-  const idsSemana = (turnosSemana ?? []).map((t) => t.id);
   const idsMismaFecha = (turnosSemana ?? [])
     .filter((t) => t.fecha === turnoDia.fecha && t.id !== turno_dia_id)
     .map((t) => t.id);
 
-  // Obtener límite de horas de la organización
-  const { data: semana } = await admin
-    .from("semanas")
-    .select("organizacion_id")
-    .eq("id", turnoDia.semana_id)
-    .single();
-
-  const { data: org } = await admin
-    .from("organizaciones")
-    .select("limite_horas_semana")
-    .eq("id", semana?.organizacion_id ?? "")
-    .single();
-
-  const limiteHoras = org?.limite_horas_semana ?? 40;
-  const maxTurnos = Math.floor(limiteHoras / 8);
-
-  // Validación 1: sin turno doble en el mismo día
+  // Validación: sin turno doble en el mismo día
   if (idsMismaFecha.length > 0) {
     const { count: dobles } = await admin
       .from("asignaciones_turno")
@@ -69,45 +52,6 @@ export async function asignarTrabajadorATurno(formData: FormData) {
 
     if ((dobles ?? 0) > 0) {
       throw new Error("El trabajador ya tiene un turno asignado para ese día.");
-    }
-  }
-
-  // Validación 3: restricción de domingo (no puede trabajar domingo si trabajó el domingo pasado)
-  const esDomingo = new Date(turnoDia.fecha + "T12:00:00").getDay() === 0;
-  if (esDomingo) {
-    const dPrevio = new Date(turnoDia.fecha + "T12:00:00");
-    dPrevio.setDate(dPrevio.getDate() - 7);
-    const domingoAnterior = dPrevio.toISOString().split("T")[0];
-
-    const { data: turnosDomingoAnt } = await admin
-      .from("turnos_dia")
-      .select("id")
-      .eq("fecha", domingoAnterior);
-
-    if (turnosDomingoAnt?.length) {
-      const idsDomingoAnt = turnosDomingoAnt.map((t) => t.id);
-      const { count: trabajoElDomingoAnt } = await admin
-        .from("asignaciones_turno")
-        .select("id", { count: "exact", head: true })
-        .eq("trabajador_id", trabajador_id)
-        .in("turno_dia_id", idsDomingoAnt);
-
-      if ((trabajoElDomingoAnt ?? 0) > 0) {
-        throw new Error("Este trabajador no puede trabajar el domingo porque trabajó el domingo pasado.");
-      }
-    }
-  }
-
-  // Validación 2: límite de horas semanales
-  if (idsSemana.length > 0) {
-    const { count: turnosActuales } = await admin
-      .from("asignaciones_turno")
-      .select("id", { count: "exact", head: true })
-      .eq("trabajador_id", trabajador_id)
-      .in("turno_dia_id", idsSemana);
-
-    if ((turnosActuales ?? 0) >= maxTurnos) {
-      throw new Error(`El trabajador ya alcanzó el límite de ${limiteHoras} horas semanales.`);
     }
   }
 

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getGrillaSemana, getTrabajadoresConDomingoRestringido } from "@/modules/turnos/queries";
+import { getGrillaSemana } from "@/modules/turnos/queries";
 import { getAdminContext } from "@/modules/admin/queries";
 import TurnosSemanaBoard from "@/components/turnos/turnos-semana-board";
 import GuardarHorarioButton from "@/components/semana/guardar-horario-button";
@@ -31,18 +31,17 @@ export default async function SemanaPage({
   if (!semana) notFound();
 
   const admin = createAdminClient();
-  const [grilla, { data: trabajadores }, domingoRestringidoIds, orgData] = await Promise.all([
+  const [grilla, { data: trabajadores }, orgData] = await Promise.all([
     getGrillaSemana(semanaId),
     supabase
       .from("trabajadores")
       .select("id, nombre")
       .eq("activo", true)
       .order("nombre", { ascending: true }),
-    getTrabajadoresConDomingoRestringido(semana.fecha_inicio),
     admin.from("organizaciones").select("limite_horas_semana").eq("id", semana.organizacion_id).single(),
   ]);
 
-  const limiteHoras = orgData.data?.limite_horas_semana ?? 40;
+  const limiteHoras = orgData.data?.limite_horas_semana ?? 42;
 
   const horasPorTrabajador: Record<string, number> = {};
   for (const item of grilla) {
@@ -149,7 +148,6 @@ export default async function SemanaPage({
         mostrarPropinas={mostrarPropinas}
         horasPorTrabajador={horasPorTrabajador}
         limiteHoras={limiteHoras}
-        domingoRestringidoIds={domingoRestringidoIds}
       />
     </div>
   );

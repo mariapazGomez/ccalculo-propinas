@@ -96,28 +96,6 @@ export async function getGrillaSemana(semanaId: string): Promise<AsignacionGrill
   });
 }
 
-export async function getTrabajadoresConDomingoRestringido(fechaInicioSemana: string): Promise<string[]> {
-  const d = new Date(fechaInicioSemana + "T12:00:00");
-  d.setDate(d.getDate() - 1);
-  const domingoAnterior = d.toISOString().split("T")[0];
-
-  const supabase = await createClient();
-  const { data: turnosDia } = await supabase
-    .from("turnos_dia")
-    .select("id")
-    .eq("fecha", domingoAnterior);
-
-  if (!turnosDia?.length) return [];
-
-  const turnoDiaIds = turnosDia.map((t) => t.id);
-
-  const { data: asignaciones } = await supabase
-    .from("asignaciones_turno")
-    .select("trabajador_id")
-    .in("turno_dia_id", turnoDiaIds);
-
-  return [...new Set((asignaciones ?? []).map((a) => a.trabajador_id))];
-}
 
 export async function getSemanas(context?: { userId: string; rol: string }) {
   const supabase = await createClient();

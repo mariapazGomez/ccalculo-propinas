@@ -34,7 +34,6 @@ type Props = {
   mostrarPropinas?: boolean;
   horasPorTrabajador?: Record<string, number>;
   limiteHoras?: number;
-  domingoRestringidoIds?: string[];
 };
 
 export default function TurnosSemanaBoard({
@@ -43,20 +42,13 @@ export default function TurnosSemanaBoard({
   trabajadores,
   mostrarPropinas = true,
   horasPorTrabajador = {},
-  limiteHoras = 40,
-  domingoRestringidoIds = [],
+  limiteHoras = 42,
 }: Props) {
   const router = useRouter();
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
   const [pendingWorkerId, setPendingWorkerId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [, startTransition] = useTransition();
-
-  const domingoRestringidoSet = useMemo(() => new Set(domingoRestringidoIds), [domingoRestringidoIds]);
-  const fechasDomingo = useMemo(
-    () => new Set(filas.filter((f) => new Date(f.fecha + "T12:00:00").getDay() === 0).map((f) => f.fecha)),
-    [filas]
-  );
 
   // selectedSlot se deriva de props → se actualiza automáticamente tras router.refresh()
   const allTurnos = useMemo(
@@ -68,7 +60,6 @@ export default function TurnosSemanaBoard({
     ? filas.find((f) => f.am?.id === selectedSlotId || f.pm?.id === selectedSlotId)
     : null;
   const selectedIsAM = selectedFila?.am?.id === selectedSlotId;
-  const esDomingoSeleccionado = selectedFila ? fechasDomingo.has(selectedFila.fecha) : false;
 
   function toggleWorker(worker: Trabajador) {
     if (!selectedSlot || pendingWorkerId) return;
@@ -112,8 +103,7 @@ export default function TurnosSemanaBoard({
           const horas = horasPorTrabajador[t.id] ?? 0;
           const pct = Math.min(horas / limiteHoras, 1);
           const horasColor = pct >= 1 ? "#f43f5e" : pct >= 0.75 ? "#f59e0b" : "#10b981";
-          const esDomingoRestringido = esDomingoSeleccionado && domingoRestringidoSet.has(t.id);
-          const deshabilitado = isPending || (esDomingoRestringido && !estaAsignado);
+          const deshabilitado = isPending;
 
           return (
             <button
@@ -124,9 +114,9 @@ export default function TurnosSemanaBoard({
               className="flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition-all active:scale-[0.98]"
               style={{
                 borderColor: estaAsignado ? "#6366f1" : "var(--border)",
-                background: estaAsignado ? "#eef2ff" : esDomingoRestringido ? "#fffbeb" : "var(--surface)",
-                opacity: deshabilitado && !estaAsignado ? 0.5 : 1,
-                cursor: deshabilitado && !estaAsignado ? "not-allowed" : "pointer",
+                background: estaAsignado ? "#eef2ff" : "var(--surface)",
+                opacity: deshabilitado ? 0.5 : 1,
+                cursor: deshabilitado ? "not-allowed" : "pointer",
               }}
             >
               {/* Checkbox */}
@@ -163,16 +153,13 @@ export default function TurnosSemanaBoard({
                   <span className="text-sm font-medium truncate" style={{ color: "var(--text-primary)" }}>
                     {t.nombre}
                   </span>
-                  {esDomingoRestringido && (
+                  {horas >= limiteHoras && (
                     <span
-                      title="Trabajó el domingo pasado — no puede trabajar este domingo"
-                      className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full"
-                      style={{ background: "#fef3c7" }}
+                      title={`Superó el límite de ${limiteHoras}h semanales`}
+                      className="rounded-full px-1.5 py-0.5 text-[9px] font-semibold"
+                      style={{ background: "#fff1f2", color: "#f43f5e" }}
                     >
-                      <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-                        <line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
-                      </svg>
+                      {horas}h
                     </span>
                   )}
                 </div>
@@ -193,7 +180,7 @@ export default function TurnosSemanaBoard({
   }
 
   // ── Celda desktop: compacta o expandida con checklist ─────────────────────
-  function renderCeldaDesktop(turno?: TurnoCelda, label?: string, esDomingo?: boolean) {
+  function renderCeldaDesktop(turno?: TurnoCelda, label?: string) {
     if (!turno) {
       return (
         <div
@@ -255,8 +242,8 @@ export default function TurnosSemanaBoard({
         onClick={() => setSelectedSlotId(turno.id)}
         className="group w-full min-h-[72px] rounded-xl border-2 p-2.5 text-left transition-all"
         style={{
-          borderColor: esDomingo ? "#fde68a" : "var(--border)",
-          background: esDomingo ? "#fffbeb" : "transparent",
+          borderColor: "var(--border)",
+          background: "transparent",
           borderStyle: turno.trabajadores.length === 0 ? "dashed" : "solid",
           cursor: "pointer",
         }}
@@ -554,8 +541,8 @@ export default function TurnosSemanaBoard({
                         {fila.nombreDia.split(" ").slice(1).join(" ")}
                       </p>
                     </td>
-                    <td className="px-4 py-4">{renderCeldaDesktop(fila.am, "AM", fechasDomingo.has(fila.fecha))}</td>
-                    <td className="px-4 py-4">{renderCeldaDesktop(fila.pm, "PM", fechasDomingo.has(fila.fecha))}</td>
+                    <td className="px-4 py-4">{renderCeldaDesktop(fila.am, "AM")}</td>
+                    <td className="px-4 py-4">{renderCeldaDesktop(fila.pm, "PM")}</td>
                     {mostrarPropinas && (
                       <td className="px-4 py-4 align-middle">
                         <form action={guardarPropinaDiaria} className="flex items-center gap-2">
