@@ -1,5 +1,15 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 
+function fmtFecha(d: Date) {
+  return d.toLocaleDateString("es-CL", { day: "numeric", month: "short" });
+}
+
+function diasAtras(base: Date, n: number): Date {
+  const d = new Date(base);
+  d.setDate(d.getDate() - n);
+  return d;
+}
+
 export async function getDashboardData(organizacion_id: string) {
   const admin = createAdminClient();
   const hoy = new Date();
@@ -7,10 +17,16 @@ export async function getDashboardData(organizacion_id: string) {
   const fechaInicioMes = `${anioMes.anio}-${String(anioMes.mes).padStart(2, "0")}-01`;
   const fechaFinMes = new Date(anioMes.anio, anioMes.mes, 0).toISOString().split("T")[0];
 
+  // Inicio del rango histórico: primer día del mes, hace 3 meses
+  const inicio3Meses = new Date(hoy.getFullYear(), hoy.getMonth() - 2, 1)
+    .toISOString()
+    .split("T")[0];
+
   const [
     { data: semanas },
     { data: trabajadores },
     { data: semanasDelMes },
+    { data: sucursales },
   ] = await Promise.all([
     admin
       .from("semanas")
@@ -28,6 +44,10 @@ export async function getDashboardData(organizacion_id: string) {
       .eq("organizacion_id", organizacion_id)
       .lte("fecha_inicio", fechaFinMes)
       .gte("fecha_fin", fechaInicioMes),
+    admin
+      .from("sucursales")
+      .select("id")
+      .eq("organizacion_id", organizacion_id),
   ]);
 
   const semanaActual = (semanas ?? []).find((s) => s.estado === "abierta") ?? semanas?.[0] ?? null;
@@ -127,6 +147,47 @@ export async function getDashboardData(organizacion_id: string) {
     }
   }
 
+  // ── Historial de ingresos (propinas_diarias) ──────────────────────────────
+  const sucursalIds = (sucursales ?? []).map((s) => s.id);
+
+  const propHist = sucursalIds.length
+    ? ((
+        await admin
+          .from("propinas_diarias")
+          .select("fecha, monto_total")
+          .in("sucursal_id", sucursalIds)
+          .gte("fecha", inicio3Meses)
+          .order("fecha", { ascending: true })
+      ).data ?? [])
+    : [];
+
+  // Suma por día
+  const porDia = new Map<string, number>();
+  for (const p of propHist) {
+    porDia.set(p.fecha, (porDia.get(p.fecha) ?? 0) + Number(p.monto_total));
+  }
+
+  function buildSerie(dias: number): number[] {
+    return Array.from({ length: dias }, (_, i) => {
+      const d = diasAtras(hoy, dias - 1 - i);
+      return porDia.get(d.toISOString().split("T")[0]) ?? 0;
+    });
+  }
+
+  const ingresos90 = buildSerie(90);
+  const ingresos30 = buildSerie(30);
+  const ingresos14 = buildSerie(14);
+
+  const totalIngresos90 = ingresos90.reduce((s, v) => s + v, 0);
+  const totalIngresos30 = ingresos30.reduce((s, v) => s + v, 0);
+  const totalIngresos14 = ingresos14.reduce((s, v) => s + v, 0);
+
+  const periodoIngresos = {
+    p90: `${fmtFecha(diasAtras(hoy, 89))} — ${fmtFecha(hoy)}`,
+    p30: `${fmtFecha(diasAtras(hoy, 29))} — ${fmtFecha(hoy)}`,
+    p14: `${fmtFecha(diasAtras(hoy, 13))} — ${fmtFecha(hoy)}`,
+  };
+
   return {
     semanaActual,
     semanas: semanas ?? [],
@@ -139,5 +200,12 @@ export async function getDashboardData(organizacion_id: string) {
     turnosAsignadosSemanaActual,
     propinasCargadasSemanaActual,
     mesActual: anioMes,
+    ingresos90,
+    ingresos30,
+    ingresos14,
+    totalIngresos90,
+    totalIngresos30,
+    totalIngresos14,
+    periodoIngresos,
   };
 }

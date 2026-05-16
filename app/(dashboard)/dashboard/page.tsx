@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getAdminContext } from "@/modules/admin/queries";
 import { getDashboardData } from "@/modules/dashboard/queries";
+import { GraficoLinea } from "@/components/dashboard/grafico-linea";
 
 const MESES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 
@@ -32,7 +33,10 @@ export default async function DashboardPage() {
   const {
     semanaActual, semanas, totalActivos, totalInactivos,
     ultimaCerrada, propinasUltimaSemana, totalUltimaSemana,
-    horasMes, turnosAsignadosSemanaActual, propinasCargadasSemanaActual, mesActual,
+    horasMes, turnosAsignadosSemanaActual, mesActual,
+    ingresos90, ingresos30, ingresos14,
+    totalIngresos90, totalIngresos30, totalIngresos14,
+    periodoIngresos,
   } = data;
 
   const abierta = semanaActual?.estado === "abierta";
@@ -51,7 +55,7 @@ export default async function DashboardPage() {
       </div>
 
       {/* ── Stats globales ── */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {/* Semana activa */}
         <div className="rounded-2xl border p-5" style={{ background: abierta ? "#f0fdf4" : "var(--surface)", borderColor: abierta ? "#bbf7d0" : "var(--border)" }}>
           <div className="flex items-center justify-between">
@@ -96,21 +100,34 @@ export default async function DashboardPage() {
           <p className="mt-1 text-xs" style={{ color: "var(--text-muted)" }}>en la semana actual</p>
         </div>
 
-        {/* Propinas cargadas semana actual */}
-        <div className="rounded-2xl border p-5" style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
-          <p className="text-xs font-medium uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>Días con propina</p>
-          <p className="mt-3 text-3xl font-bold tracking-tight" style={{ color: "var(--text-primary)" }}>
-            {propinasCargadasSemanaActual}
-          </p>
-          <p className="mt-1 text-xs" style={{ color: "var(--text-muted)" }}>registrados esta semana</p>
-          {semanaActual && (
-            <Link href={`/semana/${semanaActual.id}/resumen`}
-              className="mt-3 inline-flex items-center gap-1 text-xs font-medium hover:underline" style={{ color: "#6366f1" }}>
-              Ver resumen
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6" /></svg>
-            </Link>
-          )}
-        </div>
+      </div>
+
+      {/* ── Gráficos de ingresos ── */}
+      <div className="grid gap-4 sm:grid-cols-3">
+        <GraficoLinea
+          titulo="Últimos 3 meses"
+          periodo={periodoIngresos.p90}
+          total={totalIngresos90}
+          puntos={ingresos90}
+          gradId="grad90"
+          color="#6366f1"
+        />
+        <GraficoLinea
+          titulo="Último mes"
+          periodo={periodoIngresos.p30}
+          total={totalIngresos30}
+          puntos={ingresos30}
+          gradId="grad30"
+          color="#8b5cf6"
+        />
+        <GraficoLinea
+          titulo="Últimas 2 semanas"
+          periodo={periodoIngresos.p14}
+          total={totalIngresos14}
+          puntos={ingresos14}
+          gradId="grad14"
+          color="#06b6d4"
+        />
       </div>
 
       {/* ── Fila central: Propinas + Horas ── */}
